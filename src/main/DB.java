@@ -6,7 +6,8 @@ import java.util.Scanner;
 public class DB {
 
 	public static void main(String[] args) {
-ArticleDao articleDao = new ArticleDao();
+		
+		ArticleDao articleDao = new ArticleDao();
 		
 		Scanner sc = new Scanner(System.in);
 

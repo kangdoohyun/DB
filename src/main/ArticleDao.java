@@ -6,9 +6,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 public class ArticleDao {
+	Connection conn = null;
+	PreparedStatement pstmt = null;
+	ResultSet rs = null;
+
 	// 드라이버 정보
 	String driver = "com.mysql.cj.jdbc.Driver";
 	// dbms 주소
@@ -19,25 +22,23 @@ public class ArticleDao {
 	// 사용자 비밀번호
 	String pass = "sbs123414";
 
-	public ArrayList<Article> getArticles() {
-
+	public ArrayList<Article> getRows(String sql, String[] params) {
 		ArrayList<Article> articles = new ArrayList<>();
-
-		Connection conn = null;
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
 		try {
+			conn = getConnection();
+			pstmt = conn.prepareStatement(sql);
 
-			Class.forName(driver);
-
-			conn = DriverManager.getConnection(url, user, null);
-
-			String sql = "SELECT * FROM article";
-			pstmt = conn.prepareStatement(sql); // PreparedStatment 통해서 sql 세팅
-
-			rs = pstmt.executeQuery(); // 조회 결과가 있는 경우
-			// pstmt.executeUpdate(); // 조회 결과가 없는 경우
+			String[] fields = sqlCheck(sql);
+			if (fields != null) {
+				for (int i = 0; i < fields.length; i++) {
+					if (fields.equals("hit") || fields.equals("id")) {
+						pstmt.setInt(i + 1, Integer.parseInt(params[i]));
+					} else {
+						pstmt.setString(i + 1, params[i]);
+					}
+				}
+			}
+			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
 				String title = rs.getString("title");
@@ -54,38 +55,91 @@ public class ArticleDao {
 				article.setHit(hit);
 
 				articles.add(article);
-
 			}
-
-		} catch (SQLException e1) {
-			e1.printStackTrace();
-		} catch (ClassNotFoundException e2) {
-			// DBMS 선택 -> 담당자(Connection) 부여받음
-			e2.printStackTrace();
+		} catch (SQLException e) {
+			e.printStackTrace();
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (pstmt != null) {
-					pstmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+			close();
 		}
 
 		return articles;
 	}
 
+	public Connection getConnection() {
+		try {
+			Class.forName(driver);
+			conn = DriverManager.getConnection(url, user, null);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return conn;
+	}
+
+	public String[] sqlCheck(String sql) {
+		String[] stringBits = null;
+		if (sql.startsWith("select") || sql.startsWith("delete")) {
+			int index = sql.indexOf(" where ");
+			if (index != -1) {
+				sql = sql.substring(index + 7);
+				stringBits = sql.split("and");
+				for (int i = 0; i < stringBits.length; i++) {
+					stringBits[i] = stringBits[i].replace(" ", "");
+				}
+				for (int i = 0; i < stringBits.length; i++) {
+					String[] tmp = stringBits[i].split("=");
+					stringBits[i] = tmp[0].replace(" ", "");
+				}
+			}
+		}
+		return stringBits;
+	}
+
+	public void close() {
+		try {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			if (conn != null) {
+				conn.close();
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void setData(String sql) {
+
+		try {
+			conn = getConnection();
+			pstmt = conn.prepareStatement(sql);
+			pstmt.executeUpdate();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			close();
+		}
+	}
+
+	public ArrayList<Article> getArticles() {
+
+		return getRows("select * from article", null);
+	}
+
+	public ArrayList<Article> getArticlesByTitle(String title) {
+		String[] params = new String[1];
+		params[0] = title;
+		return getRows("select * from article where title = ?", params);
+	}
+
 	public void addArticle(String title, String body) {
 
-		Connection conn = null;
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
+		
 
 		try {
 
@@ -106,19 +160,7 @@ public class ArticleDao {
 			// DBMS 선택 -> 담당자(Connection) 부여받음
 			e2.printStackTrace();
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (pstmt != null) {
-					pstmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+			close();
 		}
 	}
 
@@ -126,9 +168,7 @@ public class ArticleDao {
 
 		Article article = new Article();
 
-		Connection conn = null;
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
+		
 
 		try {
 
@@ -153,19 +193,7 @@ public class ArticleDao {
 			// DBMS 선택 -> 담당자(Connection) 부여받음
 			e2.printStackTrace();
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (pstmt != null) {
-					pstmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+			close();
 		}
 
 		return article;
